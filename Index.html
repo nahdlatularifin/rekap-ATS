@@ -1,0 +1,662 @@
+<!DOCTYPE html>
+<html lang="id" class="h-full bg-slate-50">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dashboard Pengumpulan Nilai ATS</title>
+    
+    <!-- Google Fonts: Plus Jakarta Sans -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    
+    <!-- Tailwind CSS CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    
+    <!-- FontAwesome Icons CDN -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    
+    <!-- ApexCharts CDN -->
+    <script src="https://cdn.jsdelivr.net/npm/apexcharts"></script>
+
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    fontFamily: {
+                        sans: ['"Plus Jakarta Sans"', 'sans-serif'],
+                    },
+                    colors: {
+                        brand: {
+                            50: '#ecfdf5',
+                            100: '#d1fae5',
+                            200: '#a7f3d0',
+                            300: '#6ee7b7',
+                            400: '#34d399',
+                            500: '#10b981',
+                            600: '#059669',
+                            700: '#047857',
+                            800: '#065f46',
+                            900: '#064e3b',
+                            950: '#022c22',
+                        }
+                    }
+                }
+            }
+        }
+    </script>
+
+    <style>
+        body { font-family: 'Plus Jakarta Sans', sans-serif; }
+        .glass-card {
+            background: rgba(255, 255, 255, 0.95);
+            backdrop-filter: blur(12px);
+            border: 1px solid rgba(226, 232, 240, 0.8);
+        }
+        .custom-scrollbar::-webkit-scrollbar { width: 6px; height: 6px; }
+        .custom-scrollbar::-webkit-scrollbar-track { background: #f1f5f9; border-radius: 4px; }
+        .custom-scrollbar::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 4px; }
+        .custom-scrollbar::-webkit-scrollbar-thumb:hover { background: #94a3b8; }
+        .gradient-emerald { background: linear-gradient(135deg, #059669 0%, #047857 50%, #064e3b 100%); }
+    </style>
+</head>
+<body class="h-full text-slate-800 antialiased bg-slate-50 flex flex-col min-h-screen">
+
+    <!-- Header Navigation -->
+    <header class="bg-white border-b border-slate-200 sticky top-0 z-30 shadow-sm">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="flex items-center justify-between h-20">
+                
+                <div class="flex items-center space-x-4">
+                    <div class="w-12 h-12 rounded-xl gradient-emerald flex items-center justify-center text-white shadow-md shadow-brand-600/30">
+                        <i class="fa-solid fa-graduation-cap text-xl"></i>
+                    </div>
+                    <div>
+                        <div class="flex items-center space-x-2">
+                            <h1 class="text-xl sm:text-2xl font-extrabold text-slate-900 tracking-tight">Pengumpulan Nilai ATS</h1>
+                            <span class="bg-brand-100 text-brand-800 text-xs font-bold px-2.5 py-0.5 rounded-full border border-brand-200 uppercase">
+                                Realtime API
+                            </span>
+                        </div>
+                        <p class="text-xs sm:text-sm text-slate-500 font-medium">Monitoring Progres Nilai Asesmen Tidak Terstruktur</p>
+                    </div>
+                </div>
+
+                <div class="flex items-center space-x-3">
+                    <button id="btn-sync" onclick="fetchData(true)" 
+                            class="gradient-emerald text-white font-semibold text-sm px-4 py-2.5 rounded-xl shadow-md hover:shadow-lg active:scale-95 transition-all flex items-center space-x-2">
+                        <i id="sync-icon" class="fa-solid fa-rotate text-sm"></i>
+                        <span id="sync-text" class="hidden sm:inline">Sync Data</span>
+                    </button>
+                </div>
+            </div>
+        </div>
+    </header>
+
+    <!-- Main Workspace -->
+    <main class="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-8">
+
+        <!-- Sync Status Bar -->
+        <div class="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 bg-emerald-950 text-white p-4 sm:p-5 rounded-2xl shadow-lg relative overflow-hidden">
+            <div class="flex items-center space-x-3 z-10">
+                <div class="w-10 h-10 rounded-lg bg-emerald-800/80 border border-emerald-700/50 flex items-center justify-center text-brand-300 shrink-0">
+                    <i class="fa-solid fa-clock-rotate-left text-lg"></i>
+                </div>
+                <div>
+                    <p class="text-xs text-emerald-300 uppercase tracking-wider font-semibold">Status Sinkronisasi Terakhir</p>
+                    <p id="last-sync-time" class="text-sm font-semibold text-white">Belum terhubung API</p>
+                </div>
+            </div>
+
+            <div class="flex items-center space-x-3 z-10 w-full sm:w-auto justify-between sm:justify-end">
+                <button onclick="exportToCSV()" class="bg-emerald-800/80 hover:bg-emerald-700 text-emerald-100 border border-emerald-700/60 text-xs font-semibold px-3 py-2 rounded-lg transition-all flex items-center space-x-2">
+                    <i class="fa-solid fa-file-excel text-sm text-emerald-400"></i>
+                    <span>Ekspor CSV</span>
+                </button>
+                <div class="flex items-center space-x-2 bg-emerald-900/80 px-3 py-1.5 rounded-lg border border-emerald-800">
+                    <div id="live-pulse" class="w-2.5 h-2.5 rounded-full bg-brand-400 animate-pulse"></div>
+                    <span id="sync-status-text" class="text-xs text-emerald-200 font-medium">Sistem Standby</span>
+                </div>
+            </div>
+        </div>
+
+        <!-- API Warning Box -->
+        <div id="api-warning-box" class="hidden bg-amber-50 border-2 border-amber-300 rounded-2xl p-6 text-amber-900 space-y-3">
+            <div class="flex items-center space-x-3">
+                <i class="fa-solid fa-triangle-exclamation text-2xl text-amber-600"></i>
+                <h3 class="text-base font-bold">URL API Belum Dipasang</h3>
+            </div>
+            <p class="text-xs leading-relaxed">
+                Kamu belum memasukkan URL Web App Google Apps Script ke dalam file ini. Buka file <code class="bg-amber-200/80 px-1.5 py-0.5 rounded font-mono font-bold">index.html</code>, lalu isi variabel <code class="bg-amber-200/80 px-1.5 py-0.5 rounded font-mono font-bold">API_URL</code> pada bagian awal kode JavaScript dengan URL Web App Apps Script milikmu.
+            </p>
+        </div>
+
+        <!-- KPI Cards Grid -->
+        <section class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5">
+            
+            <!-- Card 1: Total Progress -->
+            <div class="glass-card rounded-2xl p-5 shadow-sm relative overflow-hidden">
+                <div class="flex items-center justify-between">
+                    <div>
+                        <p class="text-xs font-bold text-slate-400 uppercase tracking-wider">Total Terkumpul</p>
+                        <h3 id="kpi-progress-percent" class="text-3xl font-extrabold text-slate-900 mt-1">0%</h3>
+                        <p id="kpi-progress-sub" class="text-xs font-medium text-brand-600 mt-1">0 / 0 Sel Nilai</p>
+                    </div>
+                    <div class="w-12 h-12 rounded-xl bg-brand-50 text-brand-600 flex items-center justify-center text-xl font-bold border border-brand-100">
+                        <i class="fa-solid fa-chart-line"></i>
+                    </div>
+                </div>
+                <div class="w-full bg-slate-100 rounded-full h-2 mt-4 overflow-hidden">
+                    <div id="kpi-progress-bar" class="gradient-emerald h-2 rounded-full transition-all duration-1000 w-0"></div>
+                </div>
+            </div>
+
+            <!-- Card 2: Total Classes -->
+            <div class="glass-card rounded-2xl p-5 shadow-sm relative overflow-hidden">
+                <div class="flex items-center justify-between">
+                    <div>
+                        <p class="text-xs font-bold text-slate-400 uppercase tracking-wider">Total Kelas</p>
+                        <h3 id="kpi-total-classes" class="text-3xl font-extrabold text-slate-900 mt-1">0</h3>
+                        <p id="kpi-students-count" class="text-xs font-medium text-slate-500 mt-1">0 Total Siswa</p>
+                    </div>
+                    <div class="w-12 h-12 rounded-xl bg-brand-50 text-brand-600 flex items-center justify-center text-xl font-bold border border-brand-100">
+                        <i class="fa-solid fa-door-open"></i>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Card 3: Total Subjects -->
+            <div class="glass-card rounded-2xl p-5 shadow-sm relative overflow-hidden">
+                <div class="flex items-center justify-between">
+                    <div>
+                        <p class="text-xs font-bold text-slate-400 uppercase tracking-wider">Mata Pelajaran</p>
+                        <h3 id="kpi-total-subjects" class="text-3xl font-extrabold text-slate-900 mt-1">0</h3>
+                        <p class="text-xs font-medium text-emerald-600 mt-1">Mapel Terdeteksi</p>
+                    </div>
+                    <div class="w-12 h-12 rounded-xl bg-emerald-50 text-emerald-700 flex items-center justify-center text-xl font-bold border border-emerald-100">
+                        <i class="fa-solid fa-book-bookmark"></i>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Card 4: Tunggakan Class x Mapel -->
+            <div class="glass-card rounded-2xl p-5 shadow-sm relative overflow-hidden">
+                <div class="flex items-center justify-between">
+                    <div>
+                        <p class="text-xs font-bold text-slate-400 uppercase tracking-wider">Jumlah Tunggakan</p>
+                        <h3 id="kpi-pending-count" class="text-3xl font-extrabold text-rose-600 mt-1">0</h3>
+                        <p class="text-xs font-medium text-slate-500 mt-1">Kelas-Mapel Belum 100%</p>
+                    </div>
+                    <div class="w-12 h-12 rounded-xl bg-rose-50 text-rose-600 flex items-center justify-center text-xl font-bold border border-rose-100">
+                        <i class="fa-solid fa-list-check"></i>
+                    </div>
+                </div>
+            </div>
+
+        </section>
+
+        <!-- Charts Visualizations -->
+        <section class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            
+            <!-- Chart 1: Progres Per Kelas -->
+            <div class="glass-card rounded-2xl p-6 shadow-sm border border-slate-200">
+                <div class="flex items-center justify-between mb-4">
+                    <div>
+                        <h2 class="text-base font-bold text-slate-900 flex items-center gap-2">
+                            <i class="fa-solid fa-chart-column text-brand-600"></i>
+                            Progres Pengumpulan Per Kelas
+                        </h2>
+                        <p class="text-xs text-slate-500">Persentase keterisian nilai per kelas</p>
+                    </div>
+                </div>
+                <div id="chart-class-progress" class="w-full min-h-[300px]"></div>
+            </div>
+
+            <!-- Chart 2: Progres Per Mapel -->
+            <div class="glass-card rounded-2xl p-6 shadow-sm border border-slate-200">
+                <div class="flex items-center justify-between mb-4">
+                    <div>
+                        <h2 class="text-base font-bold text-slate-900 flex items-center gap-2">
+                            <i class="fa-solid fa-chart-bar text-brand-600"></i>
+                            Rata-rata Keterisian Per Mapel
+                        </h2>
+                        <p class="text-xs text-slate-500">Persentase pengumpulan per mata pelajaran</p>
+                    </div>
+                </div>
+                <div id="chart-subject-progress" class="w-full min-h-[300px]"></div>
+            </div>
+
+        </section>
+
+        <!-- Matriks Keterisian (Kelas vs Mapel) -->
+        <section class="glass-card rounded-2xl p-6 shadow-sm border border-slate-200">
+            <div class="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-6">
+                <div>
+                    <h2 class="text-base font-bold text-slate-900 flex items-center gap-2">
+                        <i class="fa-solid fa-border-all text-brand-600"></i>
+                        Matriks Keterisian Nilai (Kelas vs Mapel)
+                    </h2>
+                    <p class="text-xs text-slate-500">Keterisian langsung dari data Google Sheets</p>
+                </div>
+                
+                <div class="flex items-center space-x-4 text-xs font-semibold">
+                    <div class="flex items-center space-x-1.5">
+                        <span class="w-3 h-3 rounded-full bg-brand-500 inline-block"></span>
+                        <span class="text-slate-600">Lengkap (100%)</span>
+                    </div>
+                    <div class="flex items-center space-x-1.5">
+                        <span class="w-3 h-3 rounded-full bg-amber-400 inline-block"></span>
+                        <span class="text-slate-600">Sebagian</span>
+                    </div>
+                    <div class="flex items-center space-x-1.5">
+                        <span class="w-3 h-3 rounded-full bg-rose-400 inline-block"></span>
+                        <span class="text-slate-600">Kosong (0%)</span>
+                    </div>
+                </div>
+            </div>
+
+            <div class="overflow-x-auto custom-scrollbar border border-slate-200 rounded-xl">
+                <table class="w-full text-left text-xs border-collapse">
+                    <thead id="matrix-head" class="bg-slate-100 text-slate-700 font-bold sticky top-0 border-b border-slate-200"></thead>
+                    <tbody id="matrix-body" class="divide-y divide-slate-100 bg-white"></tbody>
+                </table>
+            </div>
+        </section>
+
+        <!-- Detailed Pending List Table -->
+        <section class="glass-card rounded-2xl p-6 shadow-sm border border-slate-200 space-y-5">
+            
+            <div class="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
+                <div>
+                    <h2 class="text-base font-bold text-slate-900 flex items-center gap-2">
+                        <i class="fa-solid fa-table-list text-brand-600"></i>
+                        Daftar Tunggakan Pengumpulan Nilai
+                    </h2>
+                    <p class="text-xs text-slate-500">Daftar kelas & mapel yang nilainya belum 100% lengkap</p>
+                </div>
+
+                <div class="flex flex-wrap items-center gap-3">
+                    <div class="relative flex-1 sm:w-64">
+                        <i class="fa-solid fa-magnifying-glass absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400 text-xs"></i>
+                        <input type="text" id="filter-search" oninput="applyTableFilters()" 
+                               placeholder="Cari Kelas / Mapel..." 
+                               class="w-full pl-9 pr-3 py-2 text-xs rounded-xl border border-slate-200 bg-slate-50 focus:bg-white focus:outline-none focus:ring-2 focus:ring-brand-500 transition-all">
+                    </div>
+
+                    <select id="filter-class" onchange="applyTableFilters()" 
+                            class="px-3 py-2 text-xs rounded-xl border border-slate-200 bg-slate-50 focus:bg-white focus:outline-none focus:ring-2 focus:ring-brand-500 font-medium">
+                        <option value="ALL">Semua Kelas</option>
+                    </select>
+
+                    <button onclick="resetFilters()" class="px-3 py-2 text-xs bg-slate-100 hover:bg-slate-200 text-slate-600 font-semibold rounded-xl transition-all">
+                        <i class="fa-solid fa-arrow-rotate-left mr-1"></i> Reset
+                    </button>
+                </div>
+            </div>
+
+            <div class="overflow-x-auto rounded-xl border border-slate-200 shadow-sm">
+                <table class="w-full text-left text-sm">
+                    <thead class="bg-slate-50 text-slate-600 font-bold uppercase text-[11px] tracking-wider border-b border-slate-200">
+                        <tr>
+                            <th class="py-3.5 px-4">Kelas</th>
+                            <th class="py-3.5 px-4">Mata Pelajaran</th>
+                            <th class="py-3.5 px-4 text-center">Terisi</th>
+                            <th class="py-3.5 px-4 text-center">Kurang</th>
+                            <th class="py-3.5 px-4 text-center">Total Target</th>
+                            <th class="py-3.5 px-4">Progres (%)</th>
+                            <th class="py-3.5 px-4 text-center">Status</th>
+                        </tr>
+                    </thead>
+                    <tbody id="table-body" class="divide-y divide-slate-100 bg-white font-medium text-slate-700"></tbody>
+                </table>
+            </div>
+
+            <div class="flex items-center justify-between text-xs text-slate-500 pt-2">
+                <span>Menampilkan <strong id="table-count-visible" class="text-slate-800">0</strong> tunggakan</span>
+                <span>Diperbarui otomatis via Sync API</span>
+            </div>
+
+        </section>
+
+    </main>
+
+    <!-- Footer -->
+    <footer class="bg-white border-t border-slate-200 py-6 mt-12">
+        <div class="max-w-7xl mx-auto px-4 text-center text-xs text-slate-500">
+            <p>© 2026 Dashboard Pengumpulan Nilai ATS. Dibuat oleh NUR M. IKBALILMAROM, S.Pd., M.Pd.</p>
+        </div>
+    </footer>
+
+    <!-- TOAST CONTAINER -->
+    <div id="toast-container" class="fixed bottom-5 right-5 z-50 space-y-2 pointer-events-none"></div>
+
+    <!-- FULLSCREEN LOADING OVERLAY -->
+    <div id="loading-overlay" class="fixed inset-0 z-50 bg-slate-900/40 backdrop-blur-sm hidden flex-col items-center justify-center text-white space-y-4">
+        <div class="w-16 h-16 border-4 border-emerald-400/30 border-t-emerald-400 rounded-full animate-spin"></div>
+        <p class="text-sm font-bold tracking-wide animate-pulse">Menghubungkan & Memuat Data Google Sheets...</p>
+    </div>
+
+    <script>
+        // =========================================================================
+        // PASTEKAN URL WEB APP APPS SCRIPT KAMU DI SINI:
+        // =========================================================================
+        const API_URL = 'https://script.google.com/macros/s/AKfycbxYOjxbPFaiaGtDfm68cD9NVKWp8vc3-6DH8ZWs-eeR-Dw6qeFZ7YPiw2IfqgiRGKp5/exec';
+        // =========================================================================
+
+        let currentData = null;
+        let chartClassInstance = null;
+        let chartSubjectInstance = null;
+
+        window.onload = function() {
+            if (!API_URL || API_URL.includes('PASTE_URL_WEB_APP')) {
+                document.getElementById('api-warning-box').classList.remove('hidden');
+            } else {
+                fetchData(false);
+            }
+        };
+
+        async function fetchData(isManualSync = false) {
+            if (!API_URL || API_URL.includes('PASTE_URL_WEB_APP')) {
+                document.getElementById('api-warning-box').classList.remove('hidden');
+                showToast('Isi API_URL terlebih dahulu di file HTML!', 'warning');
+                return;
+            }
+
+            document.getElementById('api-warning-box').classList.add('hidden');
+            showLoading(true);
+
+            const syncIcon = document.getElementById('sync-icon');
+            if (syncIcon) syncIcon.classList.add('animate-spin');
+
+            try {
+                const response = await fetch(API_URL);
+                if (!response.ok) throw new Error('Gagal terhubung ke API Google Apps Script');
+                
+                const result = await response.json();
+                if (result.status !== 'success') throw new Error(result.message || 'Respon API bermasalah');
+
+                currentData = result;
+                renderAllComponents();
+                updateLastSyncTimestamp(result.summary.lastUpdated);
+                showToast('Data berhasil disinkronkan dari Google Sheets!', 'success');
+
+            } catch (error) {
+                console.error('Fetch Error:', error);
+                showToast('Gagal memuat data: ' + error.message, 'warning');
+            } finally {
+                showLoading(false);
+                if (syncIcon) syncIcon.classList.remove('animate-spin');
+            }
+        }
+
+        function renderAllComponents() {
+            if (!currentData) return;
+
+            renderKPIs();
+            renderClassChart();
+            renderSubjectChart();
+            populateClassFilter();
+            renderMatrix();
+            applyTableFilters();
+        }
+
+        function renderKPIs() {
+            const summary = currentData.summary;
+
+            document.getElementById('kpi-progress-percent').innerText = summary.overallPercentage + '%';
+            document.getElementById('kpi-progress-sub').innerText = `${summary.totalGradesFilled.toLocaleString('id-ID')} / ${summary.totalGradesTarget.toLocaleString('id-ID')} Sel Nilai`;
+            document.getElementById('kpi-progress-bar').style.width = summary.overallPercentage + '%';
+
+            document.getElementById('kpi-total-classes').innerText = summary.totalClasses;
+            document.getElementById('kpi-students-count').innerText = `${summary.totalStudents} Total Siswa`;
+
+            document.getElementById('kpi-total-subjects').innerText = summary.totalSubjects;
+
+            document.getElementById('kpi-pending-count').innerText = currentData.pendingList.length;
+        }
+
+        function renderClassChart() {
+            const classNames = currentData.classes.map(c => c.name);
+            const classPct = currentData.classes.map(c => c.percentage);
+
+            const options = {
+                chart: { type: 'bar', height: 300, toolbar: { show: false }, fontFamily: 'Plus Jakarta Sans, sans-serif' },
+                plotOptions: { bar: { borderRadius: 8, columnWidth: '45%', distributed: true, dataLabels: { position: 'top' } } },
+                colors: ['#059669', '#10b981', '#047857', '#34d399', '#065f46', '#6ee7b7'],
+                dataLabels: {
+                    enabled: true,
+                    formatter: (val) => val + "%",
+                    offsetY: -20,
+                    style: { fontSize: '11px', colors: ["#334155"], fontWeight: 'bold' }
+                },
+                series: [{ name: 'Progres', data: classPct }],
+                xaxis: { categories: classNames, axisBorder: { show: false }, axisTicks: { show: false } },
+                yaxis: { max: 100, labels: { formatter: (val) => val + "%" } },
+                grid: { borderColor: '#f1f5f9' },
+                legend: { show: false }
+            };
+
+            if (chartClassInstance) chartClassInstance.destroy();
+            chartClassInstance = new ApexCharts(document.querySelector("#chart-class-progress"), options);
+            chartClassInstance.render();
+        }
+
+        function renderSubjectChart() {
+            const topSubjects = [...currentData.subjects].sort((a, b) => b.percentage - a.percentage).slice(0, 10);
+            const subjNames = topSubjects.map(s => s.name);
+            const subjPct = topSubjects.map(s => s.percentage);
+
+            const options = {
+                chart: { type: 'bar', height: 300, toolbar: { show: false }, fontFamily: 'Plus Jakarta Sans, sans-serif' },
+                plotOptions: { bar: { borderRadius: 6, horizontal: true, barHeight: '60%' } },
+                colors: ['#047857'],
+                dataLabels: {
+                    enabled: true,
+                    formatter: (val) => val + "%",
+                    style: { fontSize: '11px', colors: ['#fff'], fontWeight: 'bold' }
+                },
+                series: [{ name: 'Keterisian', data: subjPct }],
+                xaxis: { categories: subjNames, max: 100, labels: { formatter: (val) => val + "%" } },
+                grid: { borderColor: '#f1f5f9' }
+            };
+
+            if (chartSubjectInstance) chartSubjectInstance.destroy();
+            chartSubjectInstance = new ApexCharts(document.querySelector("#chart-subject-progress"), options);
+            chartSubjectInstance.render();
+        }
+
+        function populateClassFilter() {
+            const filterClass = document.getElementById('filter-class');
+            const currentVal = filterClass.value;
+            filterClass.innerHTML = `<option value="ALL">Semua Kelas</option>`;
+            currentData.classes.forEach(c => {
+                filterClass.innerHTML += `<option value="${c.name}">${c.name}</option>`;
+            });
+            filterClass.value = currentVal;
+        }
+
+        function renderMatrix() {
+            const headEl = document.getElementById('matrix-head');
+            const bodyEl = document.getElementById('matrix-body');
+
+            const classes = currentData.classes.map(c => c.name);
+            const subjects = currentData.subjects.map(s => s.name);
+
+            let headHTML = `<tr><th class="p-3 bg-slate-200/80 sticky left-0 z-10 font-bold border-r border-slate-200">Kelas \\ Mapel</th>`;
+            subjects.forEach(subj => {
+                headHTML += `<th class="p-3 text-center whitespace-nowrap font-bold border-r border-slate-200/50 min-w-[90px]">${subj}</th>`;
+            });
+            headHTML += `</tr>`;
+            headEl.innerHTML = headHTML;
+
+            let bodyHTML = '';
+            classes.forEach(cls => {
+                bodyHTML += `<tr>`;
+                bodyHTML += `<td class="p-3 font-bold bg-slate-50 text-slate-800 sticky left-0 z-10 border-r border-b border-slate-200">${cls}</td>`;
+
+                subjects.forEach(subj => {
+                    const pendingItem = currentData.pendingList.find(p => p.className === cls && p.subject === subj);
+                    let pct = 100;
+                    let badgeBg = 'bg-emerald-100 text-emerald-800';
+                    let badgeDot = 'bg-emerald-500';
+
+                    if (pendingItem) {
+                        pct = pendingItem.percentage;
+                        if (pct === 0) {
+                            badgeBg = 'bg-rose-100 text-rose-800';
+                            badgeDot = 'bg-rose-500';
+                        } else {
+                            badgeBg = 'bg-amber-100 text-amber-800';
+                            badgeDot = 'bg-amber-500';
+                        }
+                    }
+
+                    bodyHTML += `
+                        <td class="p-2 text-center border-r border-b border-slate-100">
+                            <div class="w-full py-1.5 px-2 rounded-lg text-[11px] font-bold ${badgeBg} flex items-center justify-center space-x-1">
+                                <span class="w-1.5 h-1.5 rounded-full ${badgeDot}"></span>
+                                <span>${pct}%</span>
+                            </div>
+                        </td>
+                    `;
+                });
+
+                bodyHTML += `</tr>`;
+            });
+
+            bodyEl.innerHTML = bodyHTML;
+        }
+
+        function applyTableFilters() {
+            if (!currentData) return;
+
+            const query = document.getElementById('filter-search').value.toLowerCase();
+            const selectedClass = document.getElementById('filter-class').value;
+
+            const filtered = currentData.pendingList.filter(item => {
+                const matchQuery = item.className.toLowerCase().includes(query) || item.subject.toLowerCase().includes(query);
+                const matchClass = (selectedClass === 'ALL') || (item.className === selectedClass);
+                return matchQuery && matchClass;
+            });
+
+            renderTableBody(filtered);
+        }
+
+        function renderTableBody(data) {
+            const tableBody = document.getElementById('table-body');
+            document.getElementById('table-count-visible').innerText = data.length;
+
+            if (data.length === 0) {
+                tableBody.innerHTML = `
+                    <tr>
+                        <td colspan="7" class="text-center py-8 text-slate-400 font-medium">
+                            <i class="fa-solid fa-circle-check text-2xl text-emerald-500 mb-2 block"></i>
+                            Tidak ada tunggakan nilai yang cocok dengan filter!
+                        </td>
+                    </tr>
+                `;
+                return;
+            }
+
+            let html = '';
+            data.forEach(item => {
+                let statusBadge = item.percentage === 0
+                    ? `<span class="bg-rose-100 text-rose-800 text-xs px-2.5 py-1 rounded-full font-bold">Kosong (0%)</span>`
+                    : `<span class="bg-amber-100 text-amber-800 text-xs px-2.5 py-1 rounded-full font-bold">Sebagian</span>`;
+
+                html += `
+                    <tr class="hover:bg-slate-50 transition-all">
+                        <td class="py-3 px-4 font-bold text-slate-900">${item.className}</td>
+                        <td class="py-3 px-4 text-slate-800">${item.subject}</td>
+                        <td class="py-3 px-4 text-center font-bold text-emerald-700">${item.filledCount}</td>
+                        <td class="py-3 px-4 text-center font-bold text-rose-600">${item.missingCount}</td>
+                        <td class="py-3 px-4 text-center text-slate-600">${item.totalCount}</td>
+                        <td class="py-3 px-4 min-w-[140px]">
+                            <div class="flex items-center space-x-2">
+                                <div class="w-full bg-slate-100 rounded-full h-2 overflow-hidden">
+                                    <div class="gradient-emerald h-2 rounded-full" style="width: ${item.percentage}%"></div>
+                                </div>
+                                <span class="text-xs font-bold text-slate-700 w-8 text-right">${item.percentage}%</span>
+                            </div>
+                        </td>
+                        <td class="py-3 px-4 text-center">${statusBadge}</td>
+                    </tr>
+                `;
+            });
+
+            tableBody.innerHTML = html;
+        }
+
+        function resetFilters() {
+            document.getElementById('filter-search').value = '';
+            document.getElementById('filter-class').value = 'ALL';
+            applyTableFilters();
+        }
+
+        function updateLastSyncTimestamp(lastUpdatedStr) {
+            document.getElementById('last-sync-time').innerText = lastUpdatedStr || new Date().toLocaleString('id-ID');
+        }
+
+        function showLoading(show) {
+            const overlay = document.getElementById('loading-overlay');
+            if (show) {
+                overlay.classList.remove('hidden');
+                overlay.classList.add('flex');
+            } else {
+                overlay.classList.add('hidden');
+                overlay.classList.remove('flex');
+            }
+        }
+
+        function showToast(message, type = 'info') {
+            const container = document.getElementById('toast-container');
+            const toast = document.createElement('div');
+
+            let bgClass = 'bg-slate-900 text-white';
+            let icon = 'fa-circle-info text-blue-400';
+
+            if (type === 'success') {
+                bgClass = 'bg-emerald-950 border border-emerald-800 text-emerald-100 shadow-xl';
+                icon = 'fa-circle-check text-brand-400';
+            } else if (type === 'warning') {
+                bgClass = 'bg-amber-950 border border-amber-800 text-amber-100 shadow-xl';
+                icon = 'fa-triangle-exclamation text-amber-400';
+            }
+
+            toast.className = `${bgClass} p-3.5 rounded-xl text-xs font-semibold flex items-center space-x-3 pointer-events-auto transition-all transform translate-y-2 opacity-0 shadow-lg`;
+            toast.innerHTML = `<i class="fa-solid ${icon} text-base"></i><span>${message}</span>`;
+
+            container.appendChild(toast);
+
+            setTimeout(() => toast.classList.remove('translate-y-2', 'opacity-0'), 10);
+            setTimeout(() => {
+                toast.classList.add('opacity-0', 'translate-y-2');
+                setTimeout(() => toast.remove(), 300);
+            }, 3000);
+        }
+
+        function exportToCSV() {
+            if (!currentData || !currentData.pendingList) {
+                showToast('Tidak ada data tunggakan untuk diekspor.', 'warning');
+                return;
+            }
+
+            let csv = 'Kelas,Mata Pelajaran,Terisi,Kurang,Total Target,Persentase\n';
+            currentData.pendingList.forEach(row => {
+                csv += `"${row.className}","${row.subject}",${row.filledCount},${row.missingCount},${row.totalCount},"${row.percentage}%"\n`;
+            });
+
+            const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `Tunggakan_Nilai_ATS_${new Date().toISOString().slice(0, 10)}.csv`;
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+
+            showToast('File CSV tunggakan berhasil diunduh!', 'success');
+        }
+    </script>
+</body>
+</html>
