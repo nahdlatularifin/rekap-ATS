@@ -478,55 +478,66 @@
         function renderMatrix() {
             const headEl = document.getElementById('matrix-head');
             const bodyEl = document.getElementById('matrix-body');
-
+        
+            if (!currentData || !currentData.matrix) return;
+        
             const classes = currentData.classes.map(c => c.name);
-            const subjects = currentData.subjects.map(s => s.name);
-
+            const subjects = currentData.subjects ? currentData.subjects.map(s => s.name) : Array.from(new Set(currentData.matrix.map(m => m.subject)));
+        
             let headHTML = `<tr><th class="p-3 bg-slate-200/80 sticky left-0 z-10 font-bold border-r border-slate-200">Kelas \\ Mapel</th>`;
             subjects.forEach(subj => {
                 headHTML += `<th class="p-3 text-center whitespace-nowrap font-bold border-r border-slate-200/50 min-w-[90px]">${subj}</th>`;
             });
             headHTML += `</tr>`;
             headEl.innerHTML = headHTML;
-
+        
             let bodyHTML = '';
             classes.forEach(cls => {
                 bodyHTML += `<tr>`;
                 bodyHTML += `<td class="p-3 font-bold bg-slate-50 text-slate-800 sticky left-0 z-10 border-r border-b border-slate-200">${cls}</td>`;
-
+        
                 subjects.forEach(subj => {
-                    const pendingItem = currentData.pendingList.find(p => p.className === cls && p.subject === subj);
-                    let pct = 100;
-                    let badgeBg = 'bg-emerald-100 text-emerald-800';
-                    let badgeDot = 'bg-emerald-500';
-
-                    if (pendingItem) {
-                        pct = pendingItem.percentage;
-                        if (pct === 0) {
-                            badgeBg = 'bg-rose-100 text-rose-800';
-                            badgeDot = 'bg-rose-500';
-                        } else {
+                    const item = currentData.matrix.find(m => m.className === cls && m.subject === subj);
+                    
+                    let badgeBg = 'bg-slate-100 text-slate-400';
+                    let badgeDot = 'bg-slate-300';
+                    let displayText = '-';
+        
+                    if (item) {
+                        if (item.status === 'COMPLETE') {
+                            badgeBg = 'bg-emerald-100 text-emerald-800';
+                            badgeDot = 'bg-emerald-500';
+                            displayText = `${item.percentage}%`;
+                        } else if (item.status === 'PARTIAL') {
                             badgeBg = 'bg-amber-100 text-amber-800';
                             badgeDot = 'bg-amber-500';
+                            displayText = `${item.percentage}%`;
+                        } else if (item.status === 'EMPTY') {
+                            badgeBg = 'bg-rose-100 text-rose-800';
+                            badgeDot = 'bg-rose-500';
+                            displayText = '0%';
+                        } else if (item.status === 'NOT_APPLICABLE') {
+                            badgeBg = 'bg-slate-50 text-slate-300';
+                            badgeDot = 'hidden';
+                            displayText = '-';
                         }
                     }
-
+        
                     bodyHTML += `
                         <td class="p-2 text-center border-r border-b border-slate-100">
                             <div class="w-full py-1.5 px-2 rounded-lg text-[11px] font-bold ${badgeBg} flex items-center justify-center space-x-1">
                                 <span class="w-1.5 h-1.5 rounded-full ${badgeDot}"></span>
-                                <span>${pct}%</span>
+                                <span>${displayText}</span>
                             </div>
                         </td>
                     `;
                 });
-
+        
                 bodyHTML += `</tr>`;
             });
-
+        
             bodyEl.innerHTML = bodyHTML;
         }
-
         function applyTableFilters() {
             if (!currentData) return;
 
